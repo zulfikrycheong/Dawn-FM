@@ -82,10 +82,14 @@ body[data-era="collab"] { --glow-color: #FFFFFF; --bg-tint: rgba(255, 255, 255, 
 }
 
 canvas {
-    margin-top: 30px;
-    width: 300px;
-    height: 100px;
-    filter: drop-shadow(0 0 5px var(--glow-color));
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1; /* Sits behind the UI container (z-index: 10) */
+    pointer-events: none; /* Lets your screen taps pass through to the body */
+    filter: drop-shadow(0 0 15px var(--glow-color));
     transition: filter 1.5s ease;
 }
 
