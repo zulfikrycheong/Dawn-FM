@@ -1,10 +1,17 @@
-/* Define the dynamic variables */
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 :root {
-    --glow-color: #C0C0C0; /* Default Silver */
+    --glow-color: #C0C0C0; /* Default Dawn Silver */
     --bg-tint: rgba(192, 192, 192, 0.05);
 }
 
-/* The smooth transition magic */
 body {
     background-color: #030303;
     background: radial-gradient(circle at center, var(--bg-tint) 0%, #030303 70%);
@@ -15,51 +22,56 @@ body {
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    transition: background 1.5s ease, color 1.5s ease; /* Synced with your audio crossfade */
+    user-select: none;
+    transition: background 1.5s ease, color 1.5s ease;
 }
 
-/* --- THE ERA THEMES --- */
+/* --- ERA PALETTES --- */
+body[data-era="dawn"] { --glow-color: #C0C0C0; --bg-tint: rgba(192, 192, 192, 0.08); }
+body[data-era="after_hours"] { --glow-color: #FF1A1A; --bg-tint: rgba(255, 26, 26, 0.08); }
+body[data-era="classic"] { --glow-color: #00A19C; --bg-tint: rgba(0, 161, 156, 0.08); }
+body[data-era="starboy"] { --glow-color: #FF007F; --bg-tint: rgba(255, 0, 127, 0.08); }
+body[data-era="melancholy"] { --glow-color: #FF4500; --bg-tint: rgba(255, 69, 0, 0.08); }
+body[data-era="collab"] { --glow-color: #FFFFFF; --bg-tint: rgba(255, 255, 255, 0.05); }
 
-/* Dawn FM: Silver / Chrome */
-body[data-era="dawn"] {
-    --glow-color: #C0C0C0;
-    --bg-tint: rgba(192, 192, 192, 0.08);
+/* --- UI ELEMENTS --- */
+.scanlines {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 100;
 }
 
-/* After Hours: Vegas Blood Red */
-body[data-era="after_hours"] {
-    --glow-color: #FF1A1A;
-    --bg-tint: rgba(255, 26, 26, 0.08);
+.ui-container {
+    text-align: center;
+    animation: textFlicker 4s infinite;
+    z-index: 10;
 }
 
-/* Kiss Land / Classic: Toxic Neon Green */
-body[data-era="classic"] {
-    --glow-color: #00A19C; /* Petronas Green */
-    --bg-tint: rgba(0, 161, 156, 0.08);
+.sub-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 4px;
+    opacity: 0.7;
+    margin-bottom: 5px;
 }
 
-/* Starboy: Daft Punk Neon Pink */
-body[data-era="starboy"] {
-    --glow-color: #FF007F;
-    --bg-tint: rgba(255, 0, 127, 0.08);
-}
-
-/* My Dear Melancholy: Burnt Amber */
-body[data-era="melancholy"] {
-    --glow-color: #FF4500;
-    --bg-tint: rgba(255, 69, 0, 0.08);
-}
-
-/* Collabs: Crisp Studio White */
-body[data-era="collab"] {
-    --glow-color: #FFFFFF;
-    --bg-tint: rgba(255, 255, 255, 0.05);
-}
-
-/* Update the neon text shadows to use the dynamic variable */
-.main-frequency, .station-name {
+.main-frequency {
+    font-size: 7rem;
+    font-weight: bold;
+    margin: -10px 0;
     text-shadow: 0 0 10px var(--glow-color), 0 0 20px var(--glow-color);
     transition: text-shadow 1.5s ease;
+}
+
+.station-name {
+    font-size: 1.5rem;
+    letter-spacing: 8px;
+    text-shadow: 0 0 8px var(--glow-color);
+    transition: text-shadow 1.5s ease;
+    text-transform: uppercase;
 }
 
 canvas {
@@ -68,4 +80,13 @@ canvas {
     height: 100px;
     filter: drop-shadow(0 0 5px var(--glow-color));
     transition: filter 1.5s ease;
+}
+
+@keyframes textFlicker {
+    0% { opacity: 1; }
+    3% { opacity: 0.8; }
+    6% { opacity: 1; }
+    7% { opacity: 0.9; }
+    8% { opacity: 1; }
+    100% { opacity: 1; }
 }
