@@ -1,6 +1,5 @@
 // --- 1. THE DATABASE ---
 const top75Tracks = [
-    // THE DAWN FM ERA
     { file: 'take_my_breath.mp3', id: 'take_my_breath', era: 'dawn' },
     { file: 'sacrifice.mp3', id: 'sacrifice', era: 'dawn' },
     { file: 'out_of_time.mp3', id: 'out_of_time', era: 'dawn' },
@@ -13,8 +12,6 @@ const top75Tracks = [
     { file: 'dont_break_my_heart.mp3', id: 'dont_break_my_heart', era: 'dawn' },
     { file: 'dancing_in_the_flames.mp3', id: 'dancing_in_the_flames', era: 'dawn' },
     { file: 'wake_me_up.mp3', id: 'wake_me_up', era: 'dawn' },
-
-    // THE AFTER HOURS ERA
     { file: 'blinding_lights.mp3', id: 'blinding_lights', era: 'after_hours' },
     { file: 'save_your_tears.mp3', id: 'save_your_tears', era: 'after_hours' },
     { file: 'heartless.mp3', id: 'heartless', era: 'after_hours' },
@@ -26,8 +23,6 @@ const top75Tracks = [
     { file: 'scared_to_live.mp3', id: 'scared_to_live', era: 'after_hours' },
     { file: 'snowchild.mp3', id: 'snowchild', era: 'after_hours' },
     { file: 'escape_from_la.mp3', id: 'escape_from_la', era: 'after_hours' },
-
-    // THE STARBOY ERA
     { file: 'starboy.mp3', id: 'starboy', era: 'starboy' },
     { file: 'i_feel_it_coming.mp3', id: 'i_feel_it_coming', era: 'starboy' },
     { file: 'party_monster.mp3', id: 'party_monster', era: 'starboy' },
@@ -37,8 +32,6 @@ const top75Tracks = [
     { file: 'secrets.mp3', id: 'secrets', era: 'starboy' },
     { file: 'rockin.mp3', id: 'rockin', era: 'starboy' },
     { file: 'a_lonely_night.mp3', id: 'a_lonely_night', era: 'starboy' },
-
-    // THE CLASSICS
     { file: 'the_hills.mp3', id: 'the_hills', era: 'classic' },
     { file: 'cant_feel_my_face.mp3', id: 'cant_feel_my_face', era: 'classic' },
     { file: 'often.mp3', id: 'often', era: 'classic' },
@@ -56,14 +49,10 @@ const top75Tracks = [
     { file: 'wanderlust.mp3', id: 'wanderlust', era: 'classic' },
     { file: 'tears_in_the_rain.mp3', id: 'tears_in_the_rain', era: 'classic' },
     { file: 'belong_to_the_world.mp3', id: 'belong_to_the_world', era: 'classic' },
-
-    // MY DEAR MELANCHOLY
     { file: 'call_out_my_name.mp3', id: 'call_out_my_name', era: 'melancholy' },
     { file: 'i_was_never_there.mp3', id: 'i_was_never_there', era: 'melancholy' },
     { file: 'wasted_times.mp3', id: 'wasted_times', era: 'melancholy' },
     { file: 'try_me.mp3', id: 'try_me', era: 'melancholy' },
-
-    // THE COLLABS & FEATURES
     { file: 'love_me_harder.mp3', id: 'love_me_harder', era: 'collab' },
     { file: 'off_the_table.mp3', id: 'off_the_table', era: 'collab' },
     { file: 'save_your_tears_remix.mp3', id: 'save_your_tears_remix', era: 'collab' },
@@ -111,7 +100,18 @@ let songsPlayedInEra = 0;
 let isPlaying = false;
 let lastMajorTimePlayed = -1; 
 let currentJBTemp = 28;       
-let layDownLerp = 0; // Animates the sculpture folding down
+let layDownLerp = 0; 
+
+// Fast color dictionary to prevent browser thread choking
+const eraColors = {
+    'dawn': '#C0C0C0',
+    'after_hours': '#FF1A1A',
+    'starboy': '#FF007F',
+    'classic': '#00A19C',
+    'melancholy': '#FF4500',
+    'collab': '#FFFFFF'
+};
+let currentGlowColor = '#C0C0C0';
 
 // Background Weather Fetcher
 async function updateWeather() {
@@ -156,9 +156,9 @@ document.body.addEventListener('touchend', e => {
     if (!isPlaying) return;
     let touchEndX = e.changedTouches[0].screenX;
     if (touchEndX < touchStartX - 50) {
-        playNextCycle(); // Swipe Left: Skip
+        playNextCycle(); 
     } else if (touchEndX > touchStartX + 50) {
-        songsPlayedInEra = BLOCK_SIZE; // Swipe Right: Force Era
+        songsPlayedInEra = BLOCK_SIZE; 
         playNextCycle();
     }
 });
@@ -192,6 +192,7 @@ function playNextCycle() {
             const eveningBumper = `jim_5pm_${currentJBTemp}C.mp3`;
             
             currentEra = 'after_hours';
+            currentGlowColor = eraColors[currentEra]; // Update color logic
             songsPlayedInEra = 0; 
             document.body.setAttribute('data-era', currentEra);
             eraText.innerText = 'AFTER HOURS';
@@ -213,6 +214,7 @@ function playNextCycle() {
         do { newEra = allEras[Math.floor(Math.random() * allEras.length)]; } while (newEra === currentEra);
         
         currentEra = newEra;
+        currentGlowColor = eraColors[currentEra]; // Update color logic
         songsPlayedInEra = 0;
         
         document.body.setAttribute('data-era', currentEra);
@@ -282,13 +284,10 @@ function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const computedStyle = getComputedStyle(document.body);
-    const currentColor = computedStyle.getPropertyValue('--glow-color').trim();
-    ctx.fillStyle = currentColor;
-    ctx.shadowColor = currentColor;
+    ctx.fillStyle = currentGlowColor;
+    ctx.shadowColor = currentGlowColor;
     ctx.shadowBlur = 15;
 
-    // Folds the silhouette down smoothly when audio starts
     if (isPlaying && layDownLerp < 1) {
         layDownLerp += 0.02; 
         if (layDownLerp > 1) layDownLerp = 1;
@@ -304,7 +303,6 @@ function drawVisualizer() {
         const t = i / bufferLength; 
         let curve = 2; 
         
-        // Biological curves generated via sine waves
         if (t > 0.05 && t < 0.15) curve += Math.sin((t - 0.05) * Math.PI * 10) * 12; 
         else if (t > 0.20 && t < 0.45) curve += Math.sin((t - 0.20) * Math.PI * 4) * 16; 
         else if (t > 0.45 && t < 0.85) curve += Math.sin((t - 0.45) * Math.PI * 2.5) * 18;
