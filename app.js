@@ -1,6 +1,6 @@
 // --- 1. THE DATABASE ---
 const top75Tracks = [
-    // THE DAWN FM ERA (The 103.5 Core)
+    // THE DAWN FM ERA
     { file: 'take_my_breath.mp3', id: 'take_my_breath', era: 'dawn' },
     { file: 'sacrifice.mp3', id: 'sacrifice', era: 'dawn' },
     { file: 'out_of_time.mp3', id: 'out_of_time', era: 'dawn' },
@@ -38,7 +38,7 @@ const top75Tracks = [
     { file: 'rockin.mp3', id: 'rockin', era: 'starboy' },
     { file: 'a_lonely_night.mp3', id: 'a_lonely_night', era: 'starboy' },
 
-    // THE CLASSICS (BBTM, Kiss Land, Trilogy)
+    // THE CLASSICS
     { file: 'the_hills.mp3', id: 'the_hills', era: 'classic' },
     { file: 'cant_feel_my_face.mp3', id: 'cant_feel_my_face', era: 'classic' },
     { file: 'often.mp3', id: 'often', era: 'classic' },
@@ -104,7 +104,6 @@ const specialTransitions = {
     'is_there_someone_else': 'live_weather_intro.mp3'
 };
 
-
 // --- 2. SYSTEM LOGIC & STATE ---
 const BLOCK_SIZE = 3;
 let currentEra = '';
@@ -112,8 +111,9 @@ let songsPlayedInEra = 0;
 let isPlaying = false;
 let lastMajorTimePlayed = -1; 
 let currentJBTemp = 28;       
+let layDownLerp = 0; // Animates the sculpture folding down
 
-// Background Weather Fetcher (Runs on boot, then every 30 mins)
+// Background Weather Fetcher
 async function updateWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=1.4927&longitude=103.7414&current_weather=true');
@@ -140,7 +140,6 @@ const ctx = canvas.getContext('2d');
 const statusText = document.getElementById('status-text');
 const eraText = document.getElementById('era-text');
 
-
 // --- 3. INITIALIZATION & GESTURES ---
 document.body.addEventListener('click', () => {
     if (!isPlaying) {
@@ -157,11 +156,9 @@ document.body.addEventListener('touchend', e => {
     if (!isPlaying) return;
     let touchEndX = e.changedTouches[0].screenX;
     if (touchEndX < touchStartX - 50) {
-        // Swipe Left: Skip Track
-        playNextCycle(); 
+        playNextCycle(); // Swipe Left: Skip
     } else if (touchEndX > touchStartX + 50) {
-        // Swipe Right: Force New Era Block
-        songsPlayedInEra = BLOCK_SIZE; 
+        songsPlayedInEra = BLOCK_SIZE; // Swipe Right: Force Era
         playNextCycle();
     }
 });
@@ -170,15 +167,13 @@ function initAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
-    drawVisualizer();
 }
-
 
 // --- 4. FORZA-STYLE DJ ENGINE ---
 function playNextCycle() {
     const currentHour = new Date().getHours();
 
-    // -- TIME HIJACK 1: 12 PM MIDDAY --
+    // 12 PM MIDDAY HIJACK
     if (currentHour === 12 && lastMajorTimePlayed !== 12) {
         lastMajorTimePlayed = 12;
         const middayBumper = `jim_12pm_${currentJBTemp}C.mp3`; 
@@ -189,7 +184,7 @@ function playNextCycle() {
         return; 
     }
 
-    // -- TIME HIJACK 2: 5 PM AFTER HOURS --
+    // 5 PM AFTER HOURS HIJACK
     if (currentHour === 17 && lastMajorTimePlayed !== 17) {
         lastMajorTimePlayed = 17; 
         
@@ -211,8 +206,7 @@ function playNextCycle() {
         }
     }
 
-    // -- STANDARD PLAY LOGIC --
-    // 1. Check for Era Shift
+    // ERA SHIFT LOGIC
     if (songsPlayedInEra >= BLOCK_SIZE || currentEra === '') {
         const allEras = ['dawn', 'after_hours', 'starboy', 'classic', 'melancholy', 'collab'];
         let newEra;
@@ -221,7 +215,6 @@ function playNextCycle() {
         currentEra = newEra;
         songsPlayedInEra = 0;
         
-        // Update UI Colors and Text
         document.body.setAttribute('data-era', currentEra);
         eraText.innerText = currentEra.replace('_', ' ');
 
@@ -234,7 +227,7 @@ function playNextCycle() {
         return;
     }
 
-    // 2. Play within current Era
+    // STANDARD PLAY
     const eraTracks = top75Tracks.filter(t => t.era === currentEra);
     const nextSong = eraTracks[Math.floor(Math.random() * eraTracks.length)];
     songsPlayedInEra++;
@@ -249,10 +242,9 @@ function playNextCycle() {
     }
 }
 
-
 // --- 5. PING-PONG GAPLESS CROSSFADER ---
 function playWithCrossfade(nextFilePath, callback) {
-    if(audioCtx.state === 'suspended') audioCtx.resume();
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     
     const activePlayer = usePlayerA ? playerA : playerB;
     const standbyPlayer = usePlayerA ? playerB : playerA;
@@ -261,14 +253,12 @@ function playWithCrossfade(nextFilePath, callback) {
     standbyPlayer.volume = 0;
     standbyPlayer.crossOrigin = "anonymous";
     
-    // Disconnect old, connect new to visualizer
     let sourceNode = audioCtx.createMediaElementSource(standbyPlayer);
     sourceNode.connect(analyser);
     analyser.connect(audioCtx.destination);
     
     standbyPlayer.play();
 
-    // 1.5s smooth fade
     let fadeStep = 0;
     const fadeInterval = setInterval(() => {
         fadeStep += 0.1;
@@ -287,27 +277,66 @@ function playWithCrossfade(nextFilePath, callback) {
     usePlayerA = !usePlayerA;
 }
 
-
-// --- 6. DYNAMIC CRT VISUALIZER LOOP ---
+// --- 6. THE KVESITADZE / SADDAM TRANSFORMER LOOP ---
 function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    analyser.getByteFrequencyData(dataArray);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Pull dynamic CSS color based on Current Era
     const computedStyle = getComputedStyle(document.body);
     const currentColor = computedStyle.getPropertyValue('--glow-color').trim();
     ctx.fillStyle = currentColor;
     ctx.shadowColor = currentColor;
     ctx.shadowBlur = 15;
 
+    // Folds the silhouette down smoothly when audio starts
+    if (isPlaying && layDownLerp < 1) {
+        layDownLerp += 0.02; 
+        if (layDownLerp > 1) layDownLerp = 1;
+    }
+
+    const bufferLength = analyser ? analyser.frequencyBinCount : 128;
+    const dataArray = new Uint8Array(bufferLength);
+    if (isPlaying && analyser) analyser.getByteFrequencyData(dataArray);
+
     const barWidth = (canvas.width / bufferLength) * 2.5;
-    let x = 0;
+
     for (let i = 0; i < bufferLength; i++) {
-        let barHeight = dataArray[i] / 2;
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-        x += barWidth + 1;
+        const t = i / bufferLength; 
+        let curve = 2; 
+        
+        // Biological curves generated via sine waves
+        if (t > 0.05 && t < 0.15) curve += Math.sin((t - 0.05) * Math.PI * 10) * 12; 
+        else if (t > 0.20 && t < 0.45) curve += Math.sin((t - 0.20) * Math.PI * 4) * 16; 
+        else if (t > 0.45 && t < 0.85) curve += Math.sin((t - 0.45) * Math.PI * 2.5) * 18;
+
+        let audioSpike = dataArray[i] / 2;
+        
+        const time = Date.now() * 0.002;
+        let lateralShift = Math.sin(time + i * 0.1) * 15;
+
+        // State 1: Vertical Sculpture
+        let standX = (canvas.width / 2) - curve + lateralShift;
+        let standY = i * (canvas.height / bufferLength); 
+        let standW = curve * 2;
+        let standH = 2;
+
+        // State 2: Horizontal Visualizer
+        let layX = i * (canvas.width / bufferLength);
+        let layY = canvas.height - curve - audioSpike;
+        let layW = barWidth; 
+        let layH = curve + audioSpike;
+
+        // Mathematical Lerp Morph
+        let currentX = standX + (layX - standX) * layDownLerp;
+        let currentY = standY + (layY - standY) * layDownLerp;
+        let currentW = standW + (layW - standW) * layDownLerp;
+        let currentH = standH + (layH - standH) * layDownLerp;
+
+        ctx.fillRect(currentX, currentY, currentW, currentH);
     }
 }
+
+// Start the canvas sculpture immediately on boot
+canvas.width = 300;
+canvas.height = 100;
+drawVisualizer();
