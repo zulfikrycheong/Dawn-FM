@@ -278,18 +278,39 @@ function resizeCanvas() {
 }
 window.addEventListener('resize', resizeCanvas);
 
-// --- 6. THE GOLDEN BELLA / SADDAM TRANSFORMER LOOP ---
+// --- 6. THE SORAYAMA / KVESITADZE STATUE LOOP ---
+function getSorayamaWidth(t, maxWidth) {
+    // Precise geometric mapping of the Sorayama robot silhouette
+    // Maps a percentage (t) from 0.0 (head) to 1.0 (feet) to a width
+    if (t < 0.08) return (0.15 + Math.sin(t * Math.PI / 0.08) * 0.12) * maxWidth; // Helmet Head
+    if (t < 0.11) return 0.12 * maxWidth; // Neck
+    if (t < 0.28) return (0.12 + Math.sin((t - 0.11) * Math.PI / 0.17) * 0.35) * maxWidth; // Shoulders & Bust
+    if (t < 0.45) return (0.20 + Math.sin((t - 0.28) * Math.PI / 0.17) * 0.05) * maxWidth; // Snatched Waist
+    if (t < 0.70) return (0.15 + Math.sin((t - 0.45) * Math.PI / 0.25) * 0.35) * maxWidth; // Metallic Hips & Thighs
+    if (t <= 1.00) return (0.05 + Math.cos((t - 0.70) * Math.PI / 0.60) * 0.30) * maxWidth; // Calves tapering to heels
+    return 0;
+}
+
 function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = currentGlowColor;
-    ctx.shadowColor = currentGlowColor;
-    ctx.shadowBlur = 15;
+    const computedStyle = getComputedStyle(document.body);
+    let renderColor = computedStyle.getPropertyValue('--glow-color').trim();
+    
+    // Create the highly reflective gold metallic gradient for the idle statue
+    let goldGradient = ctx.createLinearGradient(canvas.width * 0.3, 0, canvas.width * 0.7, 0);
+    goldGradient.addColorStop(0, '#B8860B');   // Dark gold edge
+    goldGradient.addColorStop(0.5, '#FFDF00'); // Bright center highlight
+    goldGradient.addColorStop(1, '#DAA520');   // Dark gold edge
 
-    // The Physical Tree-Fall Saddam Maneuver
+    ctx.fillStyle = isPlaying ? renderColor : goldGradient;
+    ctx.shadowColor = isPlaying ? renderColor : '#FFD700';
+    ctx.shadowBlur = isPlaying ? 15 : 25; // Higher glow for the gold
+
+    // The Shatter Drop Animation
     if (isPlaying && layDownLerp < 1) {
-        layDownLerp += 0.015; 
+        layDownLerp += 0.02; // Smooth 50-frame drop
         if (layDownLerp > 1) layDownLerp = 1;
     }
 
@@ -297,61 +318,41 @@ function drawVisualizer() {
     const dataArray = new Uint8Array(bufferLength);
     if (isPlaying && analyser) analyser.getByteFrequencyData(dataArray);
 
-    ctx.save();
-    
-    // Pivot point: Bottom center of the screen
-    ctx.translate(canvas.width / 2, canvas.height * 0.85);
-    
-    // Rotate from -90 degrees (standing) to 0 degrees (laying flat)
-    let currentAngle = (-Math.PI / 2) * (1 - layDownLerp);
-    ctx.rotate(currentAngle);
-
-    // Stretch her from vertical height to horizontal width as she falls
-    let standingLength = canvas.height * 0.75;
-    let layingLength = canvas.width * 0.9;
-    let currentLength = standingLength + (layingLength - standingLength) * layDownLerp;
-
-    const sliceWidth = currentLength / bufferLength;
+    const barWidth = canvas.width / bufferLength;
+    const statueMaxWidth = canvas.width * 0.18; // Statue takes up 18% of screen width
+    const startY = canvas.height * 0.15; // 15% padding from the top
+    const statueHeight = canvas.height * 0.70; // 70% total height
+    const sliceHeight = statueHeight / bufferLength;
 
     for (let i = 0; i < bufferLength; i++) {
         const t = i / bufferLength; 
         
-        let curve = currentLength * 0.006; // Solid base thickness
-        
-        // --- FLAWLESS BELLA HADID ANATOMY MATH ---
-        if (t > 0.05 && t < 0.95) {
-            const bodyT = (t - 0.05) / 0.90; 
+        // 1. STATE ONE: The Kvesitadze / Sorayama Vertical Plates
+        let plateWidth = getSorayamaWidth(t, statueMaxWidth);
+        let standX = (canvas.width / 2) - (plateWidth / 2);
+        let standY = startY + (i * sliceHeight);
+        let standW = plateWidth;
+        // Hard slice gaps: Only draw 50% of the slice height to create physical separation
+        let standH = sliceHeight * 0.5; 
 
-            if (bodyT < 0.12) {
-                // Head
-                curve += Math.sin(bodyT * Math.PI / 0.12) * (currentLength * 0.025);
-            } else if (bodyT >= 0.12 && bodyT < 0.16) {
-                // Neck
-                curve += currentLength * 0.005;
-            } else if (bodyT >= 0.16 && bodyT < 0.55) {
-                // Torso (Shoulders, Snatched Waist, Hips)
-                let torsoT = (bodyT - 0.16) / 0.39;
-                let hourglass = Math.cos(torsoT * Math.PI * 2); // 1 at shoulders/hips, -1 at waist
-                curve += (currentLength * 0.035) + hourglass * (currentLength * 0.02);
-            } else if (bodyT >= 0.55 && bodyT <= 1.0) {
-                // Runway Legs
-                let legT = (bodyT - 0.55) / 0.45;
-                curve += (currentLength * 0.055) * Math.pow(1 - legT, 1.2);
-            }
+        // 2. STATE TWO: The Horizontal Audio Visualizer
+        let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.25);
+        let layX = i * barWidth;
+        let layY = canvas.height - audioSpike - 10;
+        let layW = barWidth - 1; 
+        let layH = audioSpike + 5;
+
+        // 3. THE MORPH: Cubic Easing for a heavy, mechanical drop
+        let ease = 1 - Math.pow(1 - layDownLerp, 3);
+
+        let currentX = standX + (layX - standX) * ease;
+        let currentY = standY + (layY - standY) * ease;
+        let currentW = standW + (layW - standW) * ease;
+        // Dissolve the Kvesitadze gap as it morphs into the solid EQ bar
+        let currentH = standH + (layH - standH) * ease;
+
+        if (currentW > 0) {
+            ctx.fillRect(currentX, currentY, currentW, currentH);
         }
-
-        // Map X from Head (top/right) to Feet (bottom/left)
-        let x = (currentLength / 2) - (t * currentLength);
-        
-        let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.3) * layDownLerp;
-
-        // Y draws the thickness. Negative Y points UP when laying flat.
-        ctx.fillRect(x, -curve - audioSpike, sliceWidth + 0.5, (curve * 2) + audioSpike);
     }
-    
-    ctx.restore();
 }
-
-// Start the canvas sculpture immediately on boot
-resizeCanvas();
-drawVisualizer();
