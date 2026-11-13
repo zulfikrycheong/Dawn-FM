@@ -9,13 +9,12 @@
 
 :root {
     --glow-color: #C0C0C0; 
-    --bg-tint: rgba(192, 192, 192, 0.02); /* Drastically reduced for better contrast */
+    --bg-tint: rgba(192, 192, 192, 0.08); 
 }
 
 body {
-    background-color: #000000;
-    /* Pushed the gradient wider and made the center darker */
-    background: radial-gradient(circle at center, var(--bg-tint) 0%, #020202 80%);
+    background-color: #030303;
+    background: radial-gradient(circle at center, var(--bg-tint) 0%, #030303 70%);
     color: var(--glow-color);
     font-family: 'Share Tech Mono', monospace;
     height: 100vh;
@@ -28,18 +27,18 @@ body {
 }
 
 /* --- ERA PALETTES --- */
-body[data-era="dawn"] { --glow-color: #C0C0C0; --bg-tint: rgba(192, 192, 192, 0.02); }
-body[data-era="after_hours"] { --glow-color: #FF1A1A; --bg-tint: rgba(255, 26, 26, 0.02); }
-body[data-era="classic"] { --glow-color: #00A19C; --bg-tint: rgba(0, 161, 156, 0.02); }
-body[data-era="starboy"] { --glow-color: #FF007F; --bg-tint: rgba(255, 0, 127, 0.02); }
-body[data-era="melancholy"] { --glow-color: #FF4500; --bg-tint: rgba(255, 69, 0, 0.02); }
-body[data-era="collab"] { --glow-color: #FFFFFF; --bg-tint: rgba(255, 255, 255, 0.01); }
+body[data-era="dawn"] { --glow-color: #C0C0C0; --bg-tint: rgba(192, 192, 192, 0.08); }
+body[data-era="after_hours"] { --glow-color: #FF1A1A; --bg-tint: rgba(255, 26, 26, 0.08); }
+body[data-era="classic"] { --glow-color: #00A19C; --bg-tint: rgba(0, 161, 156, 0.08); }
+body[data-era="starboy"] { --glow-color: #FF007F; --bg-tint: rgba(255, 0, 127, 0.08); }
+body[data-era="melancholy"] { --glow-color: #FF4500; --bg-tint: rgba(255, 69, 0, 0.08); }
+body[data-era="collab"] { --glow-color: #FFFFFF; --bg-tint: rgba(255, 255, 255, 0.05); }
 
 /* --- UI ELEMENTS --- */
 .scanlines {
     position: fixed;
     top: 0; left: 0; width: 100vw; height: 100vh;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
     background-size: 100% 4px;
     pointer-events: none;
     z-index: 100;
@@ -53,30 +52,24 @@ body[data-era="collab"] { --glow-color: #FFFFFF; --bg-tint: rgba(255, 255, 255, 
 
 .sub-text {
     font-family: 'Inter', sans-serif;
-    font-size: 1rem; /* Slightly larger */
-    font-weight: 700;
-    color: #FFFFFF;
+    font-size: 0.9rem;
     letter-spacing: 4px;
+    opacity: 0.7;
     margin-bottom: 5px;
-    /* Hard black shadow for readability */
-    text-shadow: 0 2px 5px rgba(0,0,0,1), 0 0 10px var(--glow-color); 
 }
 
 .main-frequency {
     font-size: 7rem;
     font-weight: bold;
     margin: -10px 0;
-    color: #FFFFFF;
-    /* Layered shadows: black base + neon spread */
-    text-shadow: 0 4px 10px rgba(0,0,0,1), 0 0 10px var(--glow-color), 0 0 25px var(--glow-color);
+    text-shadow: 0 0 10px var(--glow-color), 0 0 20px var(--glow-color);
     transition: text-shadow 1.5s ease;
 }
 
 .station-name {
     font-size: 1.5rem;
-    color: #FFFFFF;
     letter-spacing: 8px;
-    text-shadow: 0 2px 5px rgba(0,0,0,1), 0 0 10px var(--glow-color);
+    text-shadow: 0 0 8px var(--glow-color);
     transition: text-shadow 1.5s ease;
     text-transform: uppercase;
 }
@@ -87,8 +80,8 @@ canvas {
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 1; /* Sits behind the UI container (z-index: 10) */
-    pointer-events: none; /* Lets your screen taps pass through to the body */
+    z-index: 1; /* Sits completely behind the UI text */
+    pointer-events: none; 
     filter: drop-shadow(0 0 15px var(--glow-color));
     transition: filter 1.5s ease;
 }
