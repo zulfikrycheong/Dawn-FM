@@ -102,7 +102,6 @@ let lastMajorTimePlayed = -1;
 let currentJBTemp = 28;       
 let layDownLerp = 0; 
 
-// Fast color dictionary to prevent browser thread choking
 const eraColors = {
     'dawn': '#C0C0C0',
     'after_hours': '#FF1A1A',
@@ -111,9 +110,8 @@ const eraColors = {
     'melancholy': '#FF4500',
     'collab': '#FFFFFF'
 };
-let currentGlowColor = '#C0C0C0';
+let currentGlowColor = '#FFD700';
 
-// Background Weather Fetcher
 async function updateWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=1.4927&longitude=103.7414&current_weather=true');
@@ -127,14 +125,12 @@ async function updateWeather() {
 updateWeather();
 setInterval(updateWeather, 1800000); 
 
-// Web Audio API Elements
 let audioCtx;
 let analyser;
 const playerA = new Audio();
 const playerB = new Audio();
 let usePlayerA = true;
 
-// UI Elements
 const canvas = document.getElementById('visualizer');
 const ctx = canvas.getContext('2d');
 const statusText = document.getElementById('status-text');
@@ -173,7 +169,6 @@ function initAudio() {
 function playNextCycle() {
     const currentHour = new Date().getHours();
 
-    // 12 PM MIDDAY HIJACK
     if (currentHour === 12 && lastMajorTimePlayed !== 12) {
         lastMajorTimePlayed = 12;
         const middayBumper = `jim_12pm_${currentJBTemp}C.mp3`; 
@@ -184,7 +179,6 @@ function playNextCycle() {
         return; 
     }
 
-    // 5 PM AFTER HOURS HIJACK
     if (currentHour === 17 && lastMajorTimePlayed !== 17) {
         lastMajorTimePlayed = 17; 
         
@@ -207,7 +201,6 @@ function playNextCycle() {
         }
     }
 
-    // ERA SHIFT LOGIC
     if (songsPlayedInEra >= BLOCK_SIZE || currentEra === '') {
         const allEras = ['dawn', 'after_hours', 'starboy', 'classic', 'melancholy', 'collab'];
         let newEra;
@@ -229,7 +222,6 @@ function playNextCycle() {
         return;
     }
 
-    // STANDARD PLAY
     const eraTracks = top75Tracks.filter(t => t.era === currentEra);
     const nextSong = eraTracks[Math.floor(Math.random() * eraTracks.length)];
     songsPlayedInEra++;
@@ -291,17 +283,11 @@ function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const computedStyle = getComputedStyle(document.body);
-    let renderColor = computedStyle.getPropertyValue('--glow-color').trim();
-    
-    if (!isPlaying) {
-        renderColor = '#FFD700'; 
-    }
-
-    ctx.fillStyle = renderColor;
-    ctx.shadowColor = renderColor;
+    ctx.fillStyle = currentGlowColor;
+    ctx.shadowColor = currentGlowColor;
     ctx.shadowBlur = 15;
 
+    // The Physical Tree-Fall Saddam Maneuver
     if (isPlaying && layDownLerp < 1) {
         layDownLerp += 0.015; 
         if (layDownLerp > 1) layDownLerp = 1;
@@ -311,56 +297,59 @@ function drawVisualizer() {
     const dataArray = new Uint8Array(bufferLength);
     if (isPlaying && analyser) analyser.getByteFrequencyData(dataArray);
 
-    const barWidth = (canvas.width / bufferLength);
+    ctx.save();
+    
+    // Pivot point: Bottom center of the screen
+    ctx.translate(canvas.width / 2, canvas.height * 0.85);
+    
+    // Rotate from -90 degrees (standing) to 0 degrees (laying flat)
+    let currentAngle = (-Math.PI / 2) * (1 - layDownLerp);
+    ctx.rotate(currentAngle);
+
+    // Stretch her from vertical height to horizontal width as she falls
+    let standingLength = canvas.height * 0.75;
+    let layingLength = canvas.width * 0.9;
+    let currentLength = standingLength + (layingLength - standingLength) * layDownLerp;
+
+    const sliceWidth = currentLength / bufferLength;
 
     for (let i = 0; i < bufferLength; i++) {
         const t = i / bufferLength; 
         
-        let curve = 0; 
+        let curve = currentLength * 0.006; // Solid base thickness
         
-        // Bella Hadid Anatomy Math (20% top & bottom padding)
-        if (t > 0.20 && t < 0.80) {
-            const bodyT = (t - 0.20) / 0.60; 
+        // --- FLAWLESS BELLA HADID ANATOMY MATH ---
+        if (t > 0.05 && t < 0.95) {
+            const bodyT = (t - 0.05) / 0.90; 
 
-            if (bodyT < 0.10) {
+            if (bodyT < 0.12) {
                 // Head
-                curve = Math.sin(bodyT * Math.PI / 0.10) * (canvas.width * 0.015);
-            } else if (bodyT >= 0.10 && bodyT < 0.30) {
-                // Shoulders and bust
-                curve = Math.sin((bodyT - 0.10) * Math.PI / 0.20) * (canvas.width * 0.045);
-            } else if (bodyT >= 0.30 && bodyT < 0.55) {
-                // Waist and hips
-                curve = Math.sin((bodyT - 0.30) * Math.PI / 0.25) * (canvas.width * 0.055);
+                curve += Math.sin(bodyT * Math.PI / 0.12) * (currentLength * 0.025);
+            } else if (bodyT >= 0.12 && bodyT < 0.16) {
+                // Neck
+                curve += currentLength * 0.005;
+            } else if (bodyT >= 0.16 && bodyT < 0.55) {
+                // Torso (Shoulders, Snatched Waist, Hips)
+                let torsoT = (bodyT - 0.16) / 0.39;
+                let hourglass = Math.cos(torsoT * Math.PI * 2); // 1 at shoulders/hips, -1 at waist
+                curve += (currentLength * 0.035) + hourglass * (currentLength * 0.02);
             } else if (bodyT >= 0.55 && bodyT <= 1.0) {
-                // Legs
-                curve = Math.cos((bodyT - 0.55) * Math.PI / 0.45 * 0.5) * (canvas.width * 0.035);
+                // Runway Legs
+                let legT = (bodyT - 0.55) / 0.45;
+                curve += (currentLength * 0.055) * Math.pow(1 - legT, 1.2);
             }
-            curve += canvas.width * 0.008; 
         }
 
-        let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.3);
+        // Map X from Head (top/right) to Feet (bottom/left)
+        let x = (currentLength / 2) - (t * currentLength);
+        
+        let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.3) * layDownLerp;
 
-        // State 1: Vertical Solid Gold Sculpture
-        let standX = (canvas.width / 2) - curve;
-        let standY = i * (canvas.height / bufferLength); 
-        let standW = curve * 2;
-        let standH = (canvas.height / bufferLength) * 0.85; 
-
-        // State 2: Horizontal Visualizer
-        let layX = i * barWidth;
-        let layY = canvas.height - audioSpike - 10;
-        let layW = barWidth - 1; 
-        let layH = audioSpike + 5;
-
-        let currentX = standX + (layX - standX) * layDownLerp;
-        let currentY = standY + (layY - standY) * layDownLerp;
-        let currentW = standW + (layW - standW) * layDownLerp;
-        let currentH = standH + (layH - standH) * layDownLerp;
-
-        if (currentW > 0) {
-            ctx.fillRect(currentX, currentY, currentW, currentH);
-        }
+        // Y draws the thickness. Negative Y points UP when laying flat.
+        ctx.fillRect(x, -curve - audioSpike, sliceWidth + 0.5, (curve * 2) + audioSpike);
     }
+    
+    ctx.restore();
 }
 
 // Start the canvas sculpture immediately on boot
