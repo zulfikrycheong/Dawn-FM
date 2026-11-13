@@ -110,35 +110,49 @@ const eraColors = {
     'melancholy': '#FF4500',
     'collab': '#FFFFFF'
 };
-let currentGlowColor = '#FFD700';
+let currentGlowColor = '#C0C0C0';
 
+// Background Weather Fetcher
 async function updateWeather() {
     try {
         const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=1.4927&longitude=103.7414&current_weather=true');
         const data = await res.json();
         currentJBTemp = Math.round(data.current_weather.temperature);
-        console.log(`Live JB Temp updated: ${currentJBTemp}°C`);
     } catch (e) {
-        console.log("Weather fetch failed, using fallback.");
+        console.log("Weather fetch fallback: 28°C");
     }
 }
 updateWeather();
 setInterval(updateWeather, 1800000); 
 
+// Web Audio API Elements
 let audioCtx;
 let analyser;
+let sourceA = null;
+let sourceB = null;
 const playerA = new Audio();
 const playerB = new Audio();
+playerA.crossOrigin = "anonymous";
+playerB.crossOrigin = "anonymous";
 let usePlayerA = true;
 
+// UI Elements
 const canvas = document.getElementById('visualizer');
 const ctx = canvas.getContext('2d');
 const statusText = document.getElementById('status-text');
 const eraText = document.getElementById('era-text');
+const screenFlash = document.getElementById('screen-flash');
+
+function triggerChannelFlash() {
+    if (!screenFlash) return;
+    screenFlash.classList.add('active');
+    setTimeout(() => screenFlash.classList.remove('active'), 60);
+}
 
 // --- 3. INITIALIZATION & GESTURES ---
 document.body.addEventListener('click', () => {
     if (!isPlaying) {
+        triggerChannelFlash();
         initAudio();
         playNextCycle();
         isPlaying = true;
@@ -152,8 +166,10 @@ document.body.addEventListener('touchend', e => {
     if (!isPlaying) return;
     let touchEndX = e.changedTouches[0].screenX;
     if (touchEndX < touchStartX - 50) {
+        triggerChannelFlash();
         playNextCycle(); 
     } else if (touchEndX > touchStartX + 50) {
+        triggerChannelFlash();
         songsPlayedInEra = BLOCK_SIZE; 
         playNextCycle();
     }
@@ -163,28 +179,34 @@ function initAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
+
+    // Connect MediaElementSources ONCE to prevent InvalidStateError crashes
+    sourceA = audioCtx.createMediaElementSource(playerA);
+    sourceB = audioCtx.createMediaElementSource(playerB);
+    sourceA.connect(analyser);
+    sourceB.connect(analyser);
+    analyser.connect(audioCtx.destination);
 }
 
 // --- 4. FORZA-STYLE DJ ENGINE ---
 function playNextCycle() {
     const currentHour = new Date().getHours();
 
+    // 12 PM MIDDAY HIJACK
     if (currentHour === 12 && lastMajorTimePlayed !== 12) {
         lastMajorTimePlayed = 12;
         const middayBumper = `jim_12pm_${currentJBTemp}C.mp3`; 
-        
         playWithCrossfade(middayBumper, () => {
             playWithCrossfade('false_alarm.mp3', playNextCycle);
         });
         return; 
     }
 
+    // 5 PM AFTER HOURS HIJACK
     if (currentHour === 17 && lastMajorTimePlayed !== 17) {
         lastMajorTimePlayed = 17; 
-        
         if (currentEra !== 'after_hours') {
             const eveningBumper = `jim_5pm_${currentJBTemp}C.mp3`;
-            
             currentEra = 'after_hours';
             currentGlowColor = eraColors[currentEra];
             songsPlayedInEra = 0; 
@@ -201,6 +223,7 @@ function playNextCycle() {
         }
     }
 
+    // ERA SHIFT LOGIC
     if (songsPlayedInEra >= BLOCK_SIZE || currentEra === '') {
         const allEras = ['dawn', 'after_hours', 'starboy', 'classic', 'melancholy', 'collab'];
         let newEra;
@@ -222,6 +245,7 @@ function playNextCycle() {
         return;
     }
 
+    // STANDARD PLAY
     const eraTracks = top75Tracks.filter(t => t.era === currentEra);
     const nextSong = eraTracks[Math.floor(Math.random() * eraTracks.length)];
     songsPlayedInEra++;
@@ -238,20 +262,17 @@ function playNextCycle() {
 
 // --- 5. PING-PONG GAPLESS CROSSFADER ---
 function playWithCrossfade(nextFilePath, callback) {
-    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     
     const activePlayer = usePlayerA ? playerA : playerB;
     const standbyPlayer = usePlayerA ? playerB : playerA;
 
     standbyPlayer.src = nextFilePath;
     standbyPlayer.volume = 0;
-    standbyPlayer.crossOrigin = "anonymous";
     
-    let sourceNode = audioCtx.createMediaElementSource(standbyPlayer);
-    sourceNode.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    
-    standbyPlayer.play();
+    standbyPlayer.play().catch(() => {
+        console.log(`Audio file missing (${nextFilePath}) - running visual simulation mode.`);
+    });
 
     let fadeStep = 0;
     const fadeInterval = setInterval(() => {
@@ -271,88 +292,137 @@ function playWithCrossfade(nextFilePath, callback) {
     usePlayerA = !usePlayerA;
 }
 
-// --- DYNAMIC SCREEN SCALING ---
+// --- 6. ASYMMETRIC SORAYAMA / KVESITADZE SILHOUETTE ENGINE ---
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 window.addEventListener('resize', resizeCanvas);
 
-// --- 6. THE SORAYAMA / KVESITADZE STATUE LOOP ---
-function getSorayamaWidth(t, maxWidth) {
-    // Precise geometric mapping of the Sorayama robot silhouette
-    // Maps a percentage (t) from 0.0 (head) to 1.0 (feet) to a width
-    if (t < 0.08) return (0.15 + Math.sin(t * Math.PI / 0.08) * 0.12) * maxWidth; // Helmet Head
-    if (t < 0.11) return 0.12 * maxWidth; // Neck
-    if (t < 0.28) return (0.12 + Math.sin((t - 0.11) * Math.PI / 0.17) * 0.35) * maxWidth; // Shoulders & Bust
-    if (t < 0.45) return (0.20 + Math.sin((t - 0.28) * Math.PI / 0.17) * 0.05) * maxWidth; // Snatched Waist
-    if (t < 0.70) return (0.15 + Math.sin((t - 0.45) * Math.PI / 0.25) * 0.35) * maxWidth; // Metallic Hips & Thighs
-    if (t <= 1.00) return (0.05 + Math.cos((t - 0.70) * Math.PI / 0.60) * 0.30) * maxWidth; // Calves tapering to heels
-    return 0;
+// 26-Point Side-Profile Anatomical Keyframes: [t_height, back_edge_offset, front_edge_offset]
+// Traces the Sorayama Gynoid: Helmet dome, visor rim, arched spine, bust projection, glutes, and stiletto legs
+const sorayamaProfile = [
+    [0.00, -0.02,  0.02], // Top of helmet dome
+    [0.03, -0.09,  0.08], // Upper helmet curve
+    [0.06, -0.11,  0.11], // Helmet visor brow
+    [0.08, -0.13,  0.10], // Rear helmet flare & face mask
+    [0.10, -0.07,  0.09], // Chin tip
+    [0.12, -0.05,  0.03], // Slender mechanical neck
+    [0.15, -0.13,  0.07], // Deltoid shoulder cap
+    [0.19, -0.11,  0.15], // Upper chest slope
+    [0.23, -0.09,  0.22], // Forward bust apex
+    [0.26, -0.08,  0.13], // Underbust contour
+    [0.31, -0.06,  0.09], // Ribcage taper
+    [0.36, -0.05,  0.07], // Snatched waist (lordosis arch)
+    [0.41, -0.14,  0.10], // High hip / iliac crest
+    [0.46, -0.22,  0.13], // Glute apex
+    [0.51, -0.18,  0.14], // Upper thigh
+    [0.57, -0.13,  0.12], // Mid thigh
+    [0.64, -0.09,  0.09], // Mechanical knee joint
+    [0.70, -0.13,  0.06], // Calf muscle flare
+    [0.78, -0.08,  0.04], // Lower shin taper
+    [0.85, -0.05,  0.03], // Ankle joint
+    [0.90, -0.09,  0.06], // Arched stiletto heel & instep
+    [0.96, -0.02,  0.11], // Pointed toe box
+    [1.00,  0.02,  0.09]  // Toe tip on pedestal
+];
+
+function sampleSorayamaSlice(t) {
+    for (let i = 0; i < sorayamaProfile.length - 1; i++) {
+        const p1 = sorayamaProfile[i];
+        const p2 = sorayamaProfile[i + 1];
+        if (t >= p1[0] && t <= p2[0]) {
+            const localT = (t - p1[0]) / (p2[0] - p1[0]);
+            // Cosine interpolation for smooth metallic curves between keyframes
+            const smoothT = (1 - Math.cos(localT * Math.PI)) / 2;
+            return {
+                left: p1[1] + (p2[1] - p1[1]) * smoothT,
+                right: p1[2] + (p2[2] - p1[2]) * smoothT
+            };
+        }
+    }
+    return { left: 0, right: 0 };
 }
 
 function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const computedStyle = getComputedStyle(document.body);
-    let renderColor = computedStyle.getPropertyValue('--glow-color').trim();
-    
-    // Create the highly reflective gold metallic gradient for the idle statue
-    let goldGradient = ctx.createLinearGradient(canvas.width * 0.3, 0, canvas.width * 0.7, 0);
-    goldGradient.addColorStop(0, '#B8860B');   // Dark gold edge
-    goldGradient.addColorStop(0.5, '#FFDF00'); // Bright center highlight
-    goldGradient.addColorStop(1, '#DAA520');   // Dark gold edge
-
-    ctx.fillStyle = isPlaying ? renderColor : goldGradient;
-    ctx.shadowColor = isPlaying ? renderColor : '#FFD700';
-    ctx.shadowBlur = isPlaying ? 15 : 25; // Higher glow for the gold
-
-    // The Shatter Drop Animation
     if (isPlaying && layDownLerp < 1) {
-        layDownLerp += 0.02; // Smooth 50-frame drop
+        layDownLerp += 0.018; 
         if (layDownLerp > 1) layDownLerp = 1;
     }
 
-    const bufferLength = analyser ? analyser.frequencyBinCount : 128;
-    const dataArray = new Uint8Array(bufferLength);
-    if (isPlaying && analyser) analyser.getByteFrequencyData(dataArray);
+    const numSlices = 96; // 96 Kvesitadze horizontal steel plates
+    const dataArray = new Uint8Array(numSlices);
+    if (isPlaying && analyser) {
+        analyser.getByteFrequencyData(dataArray);
+    }
 
-    const barWidth = canvas.width / bufferLength;
-    const statueMaxWidth = canvas.width * 0.18; // Statue takes up 18% of screen width
-    const startY = canvas.height * 0.15; // 15% padding from the top
-    const statueHeight = canvas.height * 0.70; // 70% total height
-    const sliceHeight = statueHeight / bufferLength;
+    // Scale proportions so statue occupies 68% of screen height (16% top/bottom margin)
+    const statueHeight = canvas.height * 0.68;
+    const startY = canvas.height * 0.16;
+    const profileScale = Math.min(canvas.width * 0.65, statueHeight * 0.45);
+    const centerX = canvas.width / 2;
+    const sliceStepY = statueHeight / numSlices;
+    const barWidth = canvas.width / numSlices;
 
-    for (let i = 0; i < bufferLength; i++) {
-        const t = i / bufferLength; 
-        
-        // 1. STATE ONE: The Kvesitadze / Sorayama Vertical Plates
-        let plateWidth = getSorayamaWidth(t, statueMaxWidth);
-        let standX = (canvas.width / 2) - (plateWidth / 2);
-        let standY = startY + (i * sliceHeight);
-        let standW = plateWidth;
-        // Hard slice gaps: Only draw 50% of the slice height to create physical separation
-        let standH = sliceHeight * 0.5; 
+    // Smooth cubic easing for the transition drop
+    const ease = 1 - Math.pow(1 - layDownLerp, 3);
+    const time = Date.now() * 0.003;
 
-        // 2. STATE TWO: The Horizontal Audio Visualizer
-        let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.25);
-        let layX = i * barWidth;
-        let layY = canvas.height - audioSpike - 10;
-        let layW = barWidth - 1; 
-        let layH = audioSpike + 5;
+    ctx.shadowColor = isPlaying ? currentGlowColor : '#FFB300';
+    ctx.shadowBlur = isPlaying ? 12 : 18;
 
-        // 3. THE MORPH: Cubic Easing for a heavy, mechanical drop
-        let ease = 1 - Math.pow(1 - layDownLerp, 3);
+    for (let i = 0; i < numSlices; i++) {
+        const t = i / (numSlices - 1);
+        const bounds = sampleSorayamaSlice(t);
 
-        let currentX = standX + (layX - standX) * ease;
-        let currentY = standY + (layY - standY) * ease;
-        let currentW = standW + (layW - standW) * ease;
-        // Dissolve the Kvesitadze gap as it morphs into the solid EQ bar
-        let currentH = standH + (layH - standH) * ease;
+        // Subtle Kvesitadze plate shimmer on idle
+        const plateShimmer = Math.sin(time + i * 0.15) * 1.5 * (1 - ease);
 
-        if (currentW > 0) {
-            ctx.fillRect(currentX, currentY, currentW, currentH);
+        // STATE 1: Standing Asymmetric Sorayama Sculpture
+        const standX = centerX + (bounds.left * profileScale) + plateShimmer;
+        const standW = Math.max(3, (bounds.right - bounds.left) * profileScale);
+        const standY = startY + (i * sliceStepY);
+        const standH = sliceStepY * 0.58; // 42% gap between plates for authentic Kvesitadze slatted look
+
+        // STATE 2: Horizontal Audio Visualizer along bottom bezel
+        let rawAudio = dataArray[i] || 0;
+        // Fallback synth pulse if MP3s aren't uploaded yet so visualizer still looks alive
+        if (isPlaying && rawAudio === 0) {
+            rawAudio = (Math.sin(time * 2 + i * 0.25) * 0.5 + 0.5) * 90 + (Math.cos(time * 3 - i * 0.4) * 35);
         }
+        const audioSpike = Math.max(4, (rawAudio / 255) * (canvas.height * 0.28));
+
+        const layX = i * barWidth;
+        const layY = canvas.height - audioSpike - 12;
+        const layW = Math.max(2, barWidth - 2);
+        const layH = audioSpike;
+
+        // Morph coordinates
+        const curX = standX + (layX - standX) * ease;
+        const curY = standY + (layY - standY) * ease;
+        const curW = standW + (layW - standW) * ease;
+        const curH = standH + (layH - standH) * ease;
+
+        // 3D Sorayama Chrome-Gold Shader on each individual plate while idle
+        if (ease < 0.95) {
+            const grad = ctx.createLinearGradient(curX, 0, curX + curW, 0);
+            grad.addColorStop(0.0, '#5C3A00'); // Deep bronze shadow edge
+            grad.addColorStop(0.25, '#D4AF37'); // Rich metallic gold
+            grad.addColorStop(0.55, '#FFF6CC'); // Specular chrome highlight
+            grad.addColorStop(0.85, '#AA771C'); // Warm gold reflection
+            grad.addColorStop(1.0, '#3D2600'); // Dark rim shadow
+            ctx.fillStyle = grad;
+        } else {
+            ctx.fillStyle = currentGlowColor;
+        }
+
+        ctx.fillRect(curX, curY, curW, curH);
     }
 }
+
+// Boot the sculpture immediately
+resizeCanvas();
+drawVisualizer();
