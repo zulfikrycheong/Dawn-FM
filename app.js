@@ -192,7 +192,7 @@ function playNextCycle() {
             const eveningBumper = `jim_5pm_${currentJBTemp}C.mp3`;
             
             currentEra = 'after_hours';
-            currentGlowColor = eraColors[currentEra]; // Update color logic
+            currentGlowColor = eraColors[currentEra];
             songsPlayedInEra = 0; 
             document.body.setAttribute('data-era', currentEra);
             eraText.innerText = 'AFTER HOURS';
@@ -214,7 +214,7 @@ function playNextCycle() {
         do { newEra = allEras[Math.floor(Math.random() * allEras.length)]; } while (newEra === currentEra);
         
         currentEra = newEra;
-        currentGlowColor = eraColors[currentEra]; // Update color logic
+        currentGlowColor = eraColors[currentEra]; 
         songsPlayedInEra = 0;
         
         document.body.setAttribute('data-era', currentEra);
@@ -279,26 +279,31 @@ function playWithCrossfade(nextFilePath, callback) {
     usePlayerA = !usePlayerA;
 }
 
+// --- DYNAMIC SCREEN SCALING ---
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+
 // --- 6. THE GOLDEN BELLA / SADDAM TRANSFORMER LOOP ---
 function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const computedStyle = getComputedStyle(document.body);
-    let currentColor = computedStyle.getPropertyValue('--glow-color').trim();
+    let renderColor = computedStyle.getPropertyValue('--glow-color').trim();
     
-    // Force the Solid Gold aesthetic while idle
     if (!isPlaying) {
-        currentColor = '#FFD700'; 
+        renderColor = '#FFD700'; 
     }
 
-    ctx.fillStyle = currentColor;
-    ctx.shadowColor = currentColor;
+    ctx.fillStyle = renderColor;
+    ctx.shadowColor = renderColor;
     ctx.shadowBlur = 15;
 
-    // Folds the silhouette down smoothly when you tap (The Saddam Maneuver)
     if (isPlaying && layDownLerp < 1) {
-        layDownLerp += 0.015; // Slightly slower fold for dramatic effect
+        layDownLerp += 0.015; 
         if (layDownLerp > 1) layDownLerp = 1;
     }
 
@@ -313,51 +318,51 @@ function drawVisualizer() {
         
         let curve = 0; 
         
-        // --- BELLA HADID ANATOMY MATH ---
-        // Squeezed to the middle 60% of the screen (20% top & bottom padding)
+        // Bella Hadid Anatomy Math (20% top & bottom padding)
         if (t > 0.20 && t < 0.80) {
-            const bodyT = (t - 0.20) / 0.60; // Map head-to-toe from 0 to 1
+            const bodyT = (t - 0.20) / 0.60; 
 
             if (bodyT < 0.10) {
                 // Head
                 curve = Math.sin(bodyT * Math.PI / 0.10) * (canvas.width * 0.015);
             } else if (bodyT >= 0.10 && bodyT < 0.30) {
-                // Sharp shoulders and bust
+                // Shoulders and bust
                 curve = Math.sin((bodyT - 0.10) * Math.PI / 0.20) * (canvas.width * 0.045);
             } else if (bodyT >= 0.30 && bodyT < 0.55) {
-                // Snatched waist into hips
+                // Waist and hips
                 curve = Math.sin((bodyT - 0.30) * Math.PI / 0.25) * (canvas.width * 0.055);
             } else if (bodyT >= 0.55 && bodyT <= 1.0) {
-                // Runway legs tapering down
+                // Legs
                 curve = Math.cos((bodyT - 0.55) * Math.PI / 0.45 * 0.5) * (canvas.width * 0.035);
             }
-            // Add a sliver of base thickness so the center is totally solid
             curve += canvas.width * 0.008; 
         }
 
         let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.3);
 
-        // State 1: Vertical Solid Gold Sculpture (No swerving, dead center)
+        // State 1: Vertical Solid Gold Sculpture
         let standX = (canvas.width / 2) - curve;
         let standY = i * (canvas.height / bufferLength); 
         let standW = curve * 2;
-        let standH = (canvas.height / bufferLength) * 0.85; // Tight gaps for solid Kvesitadze slices
+        let standH = (canvas.height / bufferLength) * 0.85; 
 
-        // State 2: Horizontal Visualizer (Slammed to the bottom of the screen)
+        // State 2: Horizontal Visualizer
         let layX = i * barWidth;
         let layY = canvas.height - audioSpike - 10;
         let layW = barWidth - 1; 
         let layH = audioSpike + 5;
 
-        // Mathematical Lerp Morph
         let currentX = standX + (layX - standX) * layDownLerp;
         let currentY = standY + (layY - standY) * layDownLerp;
         let currentW = standW + (layW - standW) * layDownLerp;
         let currentH = standH + (layH - standH) * layDownLerp;
 
-        // Only render the slices that physically exist to save GPU power
         if (currentW > 0) {
             ctx.fillRect(currentX, currentY, currentW, currentH);
         }
     }
 }
+
+// Start the canvas sculpture immediately on boot
+resizeCanvas();
+drawVisualizer();
