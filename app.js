@@ -279,17 +279,26 @@ function playWithCrossfade(nextFilePath, callback) {
     usePlayerA = !usePlayerA;
 }
 
-// --- 6. THE KVESITADZE / SADDAM TRANSFORMER LOOP ---
+// --- 6. THE GOLDEN BELLA / SADDAM TRANSFORMER LOOP ---
 function drawVisualizer() {
     requestAnimationFrame(drawVisualizer);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = currentGlowColor;
-    ctx.shadowColor = currentGlowColor;
+    const computedStyle = getComputedStyle(document.body);
+    let currentColor = computedStyle.getPropertyValue('--glow-color').trim();
+    
+    // Force the Solid Gold aesthetic while idle
+    if (!isPlaying) {
+        currentColor = '#FFD700'; 
+    }
+
+    ctx.fillStyle = currentColor;
+    ctx.shadowColor = currentColor;
     ctx.shadowBlur = 15;
 
+    // Folds the silhouette down smoothly when you tap (The Saddam Maneuver)
     if (isPlaying && layDownLerp < 1) {
-        layDownLerp += 0.02; 
+        layDownLerp += 0.015; // Slightly slower fold for dramatic effect
         if (layDownLerp > 1) layDownLerp = 1;
     }
 
@@ -297,32 +306,48 @@ function drawVisualizer() {
     const dataArray = new Uint8Array(bufferLength);
     if (isPlaying && analyser) analyser.getByteFrequencyData(dataArray);
 
-    const barWidth = (canvas.width / bufferLength) * 2.5;
+    const barWidth = (canvas.width / bufferLength);
 
     for (let i = 0; i < bufferLength; i++) {
         const t = i / bufferLength; 
-        let curve = 2; 
         
-        if (t > 0.05 && t < 0.15) curve += Math.sin((t - 0.05) * Math.PI * 10) * 12; 
-        else if (t > 0.20 && t < 0.45) curve += Math.sin((t - 0.20) * Math.PI * 4) * 16; 
-        else if (t > 0.45 && t < 0.85) curve += Math.sin((t - 0.45) * Math.PI * 2.5) * 18;
-
-        let audioSpike = dataArray[i] / 2;
+        let curve = 0; 
         
-        const time = Date.now() * 0.002;
-        let lateralShift = Math.sin(time + i * 0.1) * 15;
+        // --- BELLA HADID ANATOMY MATH ---
+        // Squeezed to the middle 60% of the screen (20% top & bottom padding)
+        if (t > 0.20 && t < 0.80) {
+            const bodyT = (t - 0.20) / 0.60; // Map head-to-toe from 0 to 1
 
-        // State 1: Vertical Sculpture
-        let standX = (canvas.width / 2) - curve + lateralShift;
+            if (bodyT < 0.10) {
+                // Head
+                curve = Math.sin(bodyT * Math.PI / 0.10) * (canvas.width * 0.015);
+            } else if (bodyT >= 0.10 && bodyT < 0.30) {
+                // Sharp shoulders and bust
+                curve = Math.sin((bodyT - 0.10) * Math.PI / 0.20) * (canvas.width * 0.045);
+            } else if (bodyT >= 0.30 && bodyT < 0.55) {
+                // Snatched waist into hips
+                curve = Math.sin((bodyT - 0.30) * Math.PI / 0.25) * (canvas.width * 0.055);
+            } else if (bodyT >= 0.55 && bodyT <= 1.0) {
+                // Runway legs tapering down
+                curve = Math.cos((bodyT - 0.55) * Math.PI / 0.45 * 0.5) * (canvas.width * 0.035);
+            }
+            // Add a sliver of base thickness so the center is totally solid
+            curve += canvas.width * 0.008; 
+        }
+
+        let audioSpike = (dataArray[i] / 255) * (canvas.height * 0.3);
+
+        // State 1: Vertical Solid Gold Sculpture (No swerving, dead center)
+        let standX = (canvas.width / 2) - curve;
         let standY = i * (canvas.height / bufferLength); 
         let standW = curve * 2;
-        let standH = 2;
+        let standH = (canvas.height / bufferLength) * 0.85; // Tight gaps for solid Kvesitadze slices
 
-        // State 2: Horizontal Visualizer
-        let layX = i * (canvas.width / bufferLength);
-        let layY = canvas.height - curve - audioSpike;
-        let layW = barWidth; 
-        let layH = curve + audioSpike;
+        // State 2: Horizontal Visualizer (Slammed to the bottom of the screen)
+        let layX = i * barWidth;
+        let layY = canvas.height - audioSpike - 10;
+        let layW = barWidth - 1; 
+        let layH = audioSpike + 5;
 
         // Mathematical Lerp Morph
         let currentX = standX + (layX - standX) * layDownLerp;
@@ -330,11 +355,9 @@ function drawVisualizer() {
         let currentW = standW + (layW - standW) * layDownLerp;
         let currentH = standH + (layH - standH) * layDownLerp;
 
-        ctx.fillRect(currentX, currentY, currentW, currentH);
+        // Only render the slices that physically exist to save GPU power
+        if (currentW > 0) {
+            ctx.fillRect(currentX, currentY, currentW, currentH);
+        }
     }
 }
-
-// Start the canvas sculpture immediately on boot
-canvas.width = 300;
-canvas.height = 100;
-drawVisualizer();
